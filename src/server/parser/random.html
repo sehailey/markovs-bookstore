@@ -1,0 +1,215 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <style type="text/css">
+div.sourceCode { overflow-x: auto; }
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code > span.dt { color: #902000; } /* DataType */
+code > span.dv { color: #40a070; } /* DecVal */
+code > span.bn { color: #40a070; } /* BaseN */
+code > span.fl { color: #40a070; } /* Float */
+code > span.ch { color: #4070a0; } /* Char */
+code > span.st { color: #4070a0; } /* String */
+code > span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code > span.ot { color: #007020; } /* Other */
+code > span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code > span.fu { color: #06287e; } /* Function */
+code > span.er { color: #ff0000; font-weight: bold; } /* Error */
+code > span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+code > span.cn { color: #880000; } /* Constant */
+code > span.sc { color: #4070a0; } /* SpecialChar */
+code > span.vs { color: #4070a0; } /* VerbatimString */
+code > span.ss { color: #bb6688; } /* SpecialString */
+code > span.im { } /* Import */
+code > span.va { color: #19177c; } /* Variable */
+code > span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code > span.op { color: #666666; } /* Operator */
+code > span.bu { } /* BuiltIn */
+code > span.ex { } /* Extension */
+code > span.pp { color: #bc7a00; } /* Preprocessor */
+code > span.at { color: #7d9029; } /* Attribute */
+code > span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code > span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code > span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+  </style>
+</head>
+<body>
+<h1 id="automatically-generating-book-titles-in-javascript-using-a-markov-model">Automatically Generating Book Titles in JavaScript Using a Markov Model</h1>
+<h2 id="by-sarah-hailey">By Sarah Hailey</h2>
+<p>This program generates random book titles, drawing from over 8000 real book titles from BookReads, retrieved from a dataset at http://kaggle.com. The program extracts the titles from a csv file, creates bigrams (pairs of each word and the word following it) using every word in every title, computes a conditional frequency distribution over these word pairs, and randomly generates titles from the resulting conditional frequency distribution.</p>
+<h2 id="markov-chains">Markov Chains</h2>
+<p>A Markov chain is a specific kind of Markov model. Specifically, it is 'a stochastic model describing a sequence of possible events in which the probability of each event depends only on the state attained in the previous event.' It sounds complicated but it isn't: given a dataset with variables that are related to each other (for example, a set of sentences, with words that follow each other), we can calculate how frequently every word is followed by some other word. Then, if we wanted to guess the next word in a sentence, we can assume that it is more likely to be a word that frequently follows it in the overall dataset and less likely to be a word that infrequently follows it.</p>
+<p>This program takes a seed word as an argument and then uses a Markov chain to probabilistically predict each word that follows based on it's <em>conditional probability</em>-- that is, how frequently it follows the previous word in the entire dataset.</p>
+<h1 id="steps">Steps</h1>
+<h3 id="read-titles">Read Titles</h3>
+<p>The first step is to parse the text file of titles into a JavaScript array.</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span class="kw">const</span> fs <span class="op">=</span> <span class="at">require</span>(<span class="st">&#39;fs&#39;</span>)
+<span class="kw">const</span> txt <span class="op">=</span> <span class="va">fs</span>.<span class="at">readFileSync</span>(<span class="st">&#39;./book_titles.txt&#39;</span><span class="op">,</span> <span class="st">&#39;utf-8&#39;</span>)
+<span class="kw">const</span> titles <span class="op">=</span> <span class="va">txt</span>.<span class="at">split</span>(<span class="st">&#39;</span><span class="sc">\n</span><span class="st">&#39;</span>)</code></pre></div>
+<h3 id="tokenize-words">Tokenize Words</h3>
+<p>'Tokenizing' refers to splitting each individual word into its own string. It has many challenges (What to do with punctuation? Should 'pair' and 'pairs' and 'pairings' be considered the same word? what about homonyms that are different parts of speech?) But for now we'll keep it very simple and just split each title into an array of words separated by white space.</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span class="kw">const</span> tokenized_titles <span class="op">=</span> <span class="va">titles</span>.<span class="at">map</span>(title <span class="op">=&gt;</span> <span class="op">{</span>
+    <span class="cf">return</span> <span class="va">title</span>.<span class="at">split</span>(<span class="st">&#39; &#39;</span>)
+<span class="op">}</span>)</code></pre></div>
+<h3 id="create-bigrams">Create Bigrams</h3>
+<p>Inspired by <a href="http://www.analyticbridge.datasciencecentral.com/profiles/blogs/generating-text-using-a-markov-model">this tutorial</a>, the function 'makePairs' creates bigrams from the dataset. A 'bigram' is just a pair of words that occur next to each other in a dataset. The makePairs function takes in an array of words in a title and outputs an array of bigrams. For example, the array:</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript">[<span class="st">&#39;The&#39;</span><span class="op">,</span> <span class="st">&#39;Cat&#39;</span><span class="op">,</span> <span class="st">&#39;In&#39;</span><span class="op">,</span> <span class="st">&#39;The&#39;</span><span class="op">,</span> <span class="st">&#39;Hat&#39;</span>] </code></pre></div>
+<p>becomes</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript">[[<span class="st">&#39;the&#39;</span><span class="op">,</span> <span class="st">&#39;cat&#39;</span>]<span class="op">,</span> [<span class="st">&#39;cat&#39;</span><span class="op">,</span> <span class="st">&#39;in&#39;</span>]<span class="op">,</span> [<span class="st">&#39;in&#39;</span><span class="op">,</span> <span class="st">&#39;the&#39;</span>]<span class="op">,</span> [<span class="st">&#39;the&#39;</span><span class="op">,</span> <span class="st">&#39;hat&#39;</span>]] </code></pre></div>
+<p>To compute the bigrams, we loop through each title and push each bigram into a new array 'pairs'.</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span class="kw">const</span> pairs <span class="op">=</span> []
+
+<span class="co">//only create bigram if title has more than one word</span>
+<span class="va">tokenized_titles</span>.<span class="at">map</span>(title <span class="op">=&gt;</span> <span class="op">{</span>
+    <span class="cf">if</span> (<span class="va">title</span>.<span class="at">length</span> <span class="op">&gt;</span> <span class="dv">1</span>) <span class="op">{</span>
+        <span class="cf">for</span> (<span class="kw">let</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> <span class="va">title</span>.<span class="at">length</span> <span class="op">-</span> <span class="dv">1</span><span class="op">;</span> i<span class="op">++</span>) <span class="op">{</span>
+            <span class="kw">const</span> bigram <span class="op">=</span> [title[i]<span class="op">,</span> title[i <span class="op">+</span> <span class="dv">1</span>]]
+            <span class="va">pairs</span>.<span class="at">push</span>(bigram)
+        <span class="op">}</span>
+    <span class="op">}</span>
+<span class="op">}</span>)</code></pre></div>
+<h3 id="create-the-conditional-frequency-distribution">Create The Conditional Frequency Distribution</h3>
+<p>A conditional frequency distribution (CFD) is the frequency that the second word in a set of bigrams appears after the first. In order words, it is the frequency that the second word occurs <em>conditional</em> on the first word coming before it.</p>
+<p>We will store the CFD of each word in an object where each key references an the CFD of each word. Returning to our example above, the CFD would become:</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span class="co">// Example Conditional Probability Distribution Dictionary</span>
+    <span class="op">{</span>
+        <span class="st">&#39;the&#39;</span><span class="op">:</span> <span class="op">{</span> <span class="st">&#39;cat&#39;</span><span class="op">:</span> <span class="dv">1</span><span class="op">,</span> <span class="st">&#39;hat&#39;</span><span class="op">:</span> <span class="dv">1</span> <span class="op">},</span>
+        <span class="st">&#39;cat&#39;</span><span class="op">:</span> <span class="op">{</span> <span class="st">&#39;in&#39;</span><span class="op">:</span> <span class="dv">1</span> <span class="op">},</span>
+        <span class="st">&#39;in&#39;</span><span class="op">:</span> <span class="op">{</span> <span class="st">&#39;the&#39;</span><span class="op">:</span> <span class="dv">1</span> <span class="op">}</span>
+    <span class="op">}</span></code></pre></div>
+<p>In this example, the probabilty of the word 'cat' conditional on the word 'the' is 50%. If we were given the word 'the' and wanted to guess what would come next, we should guess 'cat' 50% of the time.</p>
+<h3 id="generate-a-random-title">Generate A Random Title</h3>
+<p>The function <em>generateTitle</em> will take this CFD as an argument, as well as a seed word to start the process, and a number <em>num</em> that represents how long the title will be.*</p>
+<p>The function will append the seed word (e.g., 'the') to an empty array <em>title</em>. Next, it will create a temporary array <em>probability_spread</em> and push every word from CFD['the'] into <em>probability_spread</em> the number of times it follows 'the'. In the example above, this would be:</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript">[<span class="st">&#39;cat&#39;</span><span class="op">,</span> <span class="st">&#39;hat&#39;</span>]</code></pre></div>
+<p>The resulting <em>probability_spread</em> array will contain each word that follows 'the' in the entire dataset the number of times it follows 'the'.</p>
+<p>Finally, the function will select a random word from <em>probability_spread</em> as the next word in the title. Because <em>probability_spread</em> now contains more instances of words that follow 'the' more frequently in the dataset, those words will have a higher probability of being selected, while less-frequent words will still be chosen occasionally.</p>
+<p>First, let's write a small helper function for generating a random integer. This will help us select a random word from the probability spread.</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span class="kw">const</span> randInt <span class="op">=</span> int <span class="op">=&gt;</span> <span class="op">{</span>
+    <span class="cf">return</span> <span class="va">Math</span>.<span class="at">floor</span>(<span class="va">Math</span>.<span class="at">random</span>() <span class="op">*</span> int)
+<span class="op">}</span></code></pre></div>
+<p>We'll also write a small helper function to put the title in proper case at the end.</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span class="kw">const</span> titleCase <span class="op">=</span> titleArray <span class="op">=&gt;</span> <span class="op">{</span>
+    <span class="cf">return</span> <span class="va">titleArray</span>.<span class="at">map</span>(word <span class="op">=&gt;</span> <span class="op">{</span>
+        <span class="cf">return</span> <span class="va">word</span>.<span class="at">charAt</span>(<span class="dv">0</span>).<span class="at">toUpperCase</span>() <span class="op">+</span> <span class="va">word</span>.<span class="at">slice</span>(<span class="dv">1</span>)
+    <span class="op">}</span>)
+<span class="op">}</span></code></pre></div>
+<p>Now for the fun part: the function that actually generates the titles!</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span class="kw">const</span> generateTitle <span class="op">=</span> (word <span class="op">=</span> <span class="st">&#39;the&#39;</span><span class="op">,</span> num <span class="op">=</span> <span class="dv">10</span>) <span class="op">=&gt;</span> <span class="op">{</span>
+    title <span class="op">=</span> []
+    <span class="cf">for</span> (<span class="kw">let</span> n <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> n <span class="op">&lt;</span> num<span class="op">;</span> n<span class="op">++</span>) <span class="op">{</span>
+        <span class="kw">let</span> wordCFD <span class="op">=</span> CFD[word]
+        <span class="cf">if</span> (<span class="op">!</span>wordCFD) <span class="cf">break</span>
+        <span class="kw">let</span> probability_spread <span class="op">=</span> []
+        <span class="va">Object</span>.<span class="at">keys</span>(wordCFD).<span class="at">forEach</span>(key <span class="op">=&gt;</span> <span class="op">{</span>
+            <span class="cf">for</span> (<span class="kw">let</span> m <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> m <span class="op">&lt;=</span> wordCFD[key]<span class="op">;</span> m<span class="op">++</span>) <span class="op">{</span>
+                <span class="va">probability_spread</span>.<span class="at">push</span>(key)
+            <span class="op">}</span>
+        <span class="op">}</span>)
+        <span class="va">title</span>.<span class="at">push</span>(word)
+        word <span class="op">=</span> probability_spread[<span class="at">randInt</span>(<span class="va">probability_spread</span>.<span class="at">length</span>)]
+    <span class="op">}</span>
+    <span class="cf">return</span> <span class="va">title</span>.<span class="at">join</span>(<span class="st">&quot; &quot;</span>)
+<span class="op">}</span></code></pre></div>
+<p>And that's it! Here's a sample of the titles generated by this approach:</p>
+<ul>
+<li>The Guardian</li>
+<li>The High Places You'll Grow Rich Asians</li>
+<li>The Stars Above</li>
+<li>The Complete Cartoon Epic Story That Changed The Hidden Oracle Night Over</li>
+<li>The Mermaids Singing Club A Shoe Dog: A Chance (chance, #1)&quot;</li>
+<li>The Analyst</li>
+<li>The Redhead Revealed</li>
+<li>The Red Pajama&quot;</li>
+<li>The Lost In You Take The Lone Drow</li>
+<li>The Ruby In The Warlock</li>
+<li>The Other Suns: The Scottish Prisoner Of Winter</li>
+<li>Of Men And Other</li>
+</ul>
+<p>Fun!</p>
+<h3 id="title-endings">Title Endings</h3>
+<p>There are two minor problems with this approach. First, notice the line near the beginning of the function:</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span class="cf">if</span> (<span class="op">!</span>wordCFD) <span class="cf">break</span></code></pre></div>
+<p>This is a small hack to prevent the program from crashing if a word is selected from <em>probability_spread</em> that never has another word following it in the dataset, but if this will occasionally return a title that is unusually short. Second, if the function ends up selecting words until it reaches <em>num</em> it may select a word that a title would never end with, such as 'of'. Awkward!</p>
+<p>Some words should never terminate titles (e.g., 'the'), while some should always terminate titles (e.g., words that never have any words following them), and some should fall in-between, having a probability of terminating a title based on how frequently it occurs at the end of titles in the dataset.</p>
+<h4 id="probability-of-ending-a-sentence">Probability of Ending a Sentence</h4>
+<p>A preliminary approach is to compute a ratio of how frequently a given word ends a title relative to how frequently it occurs overall. The assumption is that words that never occur anywhere but at the end of titles should terminate titles 100% of the time whereas words that never occur at the end of titles should never terminate titles, and the in-between cases should have a probability of terminating titles relative to the aforementioned ratio.</p>
+<h5 id="find-endword-frequency-distributions">Find Endword Frequency Distributions</h5>
+<p>First, we need a <em>un</em>-conditional frequency distribution of all the words in the dataset:</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span class="co">// Find frequency distribution for each word</span>
+<span class="kw">const</span> FD <span class="op">=</span> <span class="op">{}</span>
+<span class="kw">const</span> flatTitleWords <span class="op">=</span> <span class="va">txt</span>.<span class="at">replace</span>(<span class="ss">/</span><span class="sc">\n</span><span class="ss">/g</span><span class="op">,</span> <span class="st">&#39; &#39;</span>).<span class="at">split</span>(<span class="st">&#39; &#39;</span>)
+<span class="va">flatTitleWords</span>.<span class="at">map</span>(word <span class="op">=&gt;</span> <span class="op">{</span>
+    FD[word] <span class="op">?</span> FD[word]<span class="op">++</span> : (FD[word] <span class="op">=</span> <span class="dv">1</span>)
+<span class="op">}</span>)</code></pre></div>
+<p>We can find all of the 'end words' by simply taking the last word in every title from the title list:</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span class="co">// Find endword frequency distribution for each word</span>
+<span class="kw">const</span> EFD <span class="op">=</span> <span class="op">{}</span>
+
+<span class="va">tokenized_titles</span>.<span class="at">map</span>(title <span class="op">=&gt;</span> <span class="op">{</span>
+    <span class="kw">const</span> lastWord <span class="op">=</span> title[<span class="va">title</span>.<span class="at">length</span> <span class="op">-</span> <span class="dv">1</span>]
+    EFD[lastWord] <span class="op">?</span> EFD[lastWord]<span class="op">++</span> : (EFD[lastWord] <span class="op">=</span> <span class="dv">1</span>)
+<span class="op">}</span>)</code></pre></div>
+<p>And finally, we can create a <em>termination probability distribution</em> that represents the frequency that each word occurs at the end of a sentence</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span class="co">// Find termination probability distribution for each word </span>
+<span class="kw">const</span> TPD <span class="op">=</span> <span class="op">{}</span>
+
+<span class="co">// All words in EFD are in FD at least once</span>
+<span class="va">Object</span>.<span class="at">keys</span>(EFD).<span class="at">forEach</span>(key <span class="op">=&gt;</span> <span class="op">{</span>
+    TPD[key] <span class="op">=</span> EFD[key] / FD[key]
+<span class="op">}</span>)
+
+<span class="co">// If a word is in FD but not EFD, it never terminates a title</span>
+<span class="va">Object</span>.<span class="at">keys</span>(FD).<span class="at">forEach</span>(key <span class="op">=&gt;</span> <span class="op">{</span>
+    <span class="cf">if</span> (<span class="op">!</span>TPD[key]) TPD[key] <span class="op">=</span> <span class="dv">0</span>
+<span class="op">}</span>)</code></pre></div>
+<p>We can use this TPD to check if the title ends on a word that shouldn't end a sentence (such as 'the'), then it takes a step back and chooses another word. A simple fix, but it definitely impoves the results!</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span class="kw">const</span> generateTitleWithTPD <span class="op">=</span> (word <span class="op">=</span> <span class="st">&#39;the&#39;</span><span class="op">,</span> num <span class="op">=</span> <span class="dv">10</span>) <span class="op">=&gt;</span> <span class="op">{</span>
+    <span class="kw">const</span> title <span class="op">=</span> [word]
+    
+    <span class="cf">for</span> (<span class="kw">let</span> n <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> n <span class="op">&lt;=</span> num<span class="op">;</span> n<span class="op">++</span>) <span class="op">{</span>
+        <span class="kw">let</span> wordCFD <span class="op">=</span> CFD[word]
+        <span class="cf">if</span> (<span class="op">!</span>wordCFD) <span class="cf">break</span>
+        <span class="kw">let</span> probability_spread <span class="op">=</span> []
+        <span class="va">Object</span>.<span class="at">keys</span>(wordCFD).<span class="at">forEach</span>(key <span class="op">=&gt;</span> <span class="op">{</span>
+            <span class="cf">for</span> (<span class="kw">let</span> m <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> m <span class="op">&lt;</span> wordCFD[key]<span class="op">;</span> m<span class="op">++</span>) <span class="op">{</span>
+                <span class="va">probability_spread</span>.<span class="at">push</span>(key)
+            <span class="op">}</span>
+        <span class="op">}</span>)
+        word <span class="op">=</span> probability_spread[<span class="at">randInt</span>(<span class="va">probability_spread</span>.<span class="at">length</span>)]
+        <span class="va">title</span>.<span class="at">push</span>(word)
+        <span class="cf">if</span> ((n <span class="op">===</span> <span class="dv">10</span> <span class="op">&amp;&amp;</span> TPD[word] <span class="op">&lt;</span> <span class="fl">0.5</span>) <span class="op">||</span> <span class="op">!</span>TPD[word]) n <span class="op">=</span> <span class="dv">9</span>
+    <span class="op">}</span>
+    <span class="va">console</span>.<span class="at">log</span>(<span class="at">titleCase</span>(title).<span class="at">join</span>(<span class="st">&#39; &#39;</span>))
+    <span class="cf">return</span> <span class="at">titleCase</span>(title).<span class="at">join</span>(<span class="st">&#39; &#39;</span>)
+<span class="op">}</span></code></pre></div>
+<p>Titles generated from this approach:</p>
+<ul>
+<li>The Bloodletter's Daughter: A Connecticut Yankee In The Lemonade War Ii And The Three Little House</li>
+<li>The Last Of The Other Name Of Evidence That Will - The Skin Deep Fathom</li>
+<li>The Fall Of A Scanner Darkly</li>
+<li>The Midwife Of Art Of The Fifth Avenue</li>
+<li>The Art Of The Snowy Day The Aids Epidemic&quot;</li>
+<li>The Broom Of Being An Officer And Back When The Wolf Brother Odd Apocalypse Suite&quot;</li>
+<li>The Twits</li>
+<li>The Universe Versus The Hegemon</li>
+<li>The Power Of The Calvin And The Saggy Baggy Elephant (little Golden Book)</li>
+<li>The Rise Of A Carpenter Story</li>
+<li>The Winter Of Right Thing To Side Gallery 3</li>
+</ul>
+<p>And there you have it! There are still small issues that could be improved, but the results are still pretty good!</p>
+<h3 id="p.s.">P.S.</h3>
+<p>This project was written using a <em>literate programming</em> approach. Literate programming is a programming paradigm conceived by Donald Knuth that intersperses descriptive writing about the code with the actual code blocks themselves. While there are <a href="https://news.ycombinator.com/item?id=10069748">many critiques</a> of the literate programming process, I have found it incredibly useful for going through the process of learning and building this project. I recommend that other learners give it a try!</p>
+</body>
+</html>

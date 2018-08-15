@@ -1,0 +1,361 @@
+#+TITLE: Automatically Generating Book Titles Using a Markov Model
+#+AUTHOR: Sarah Hailey
+#+PROPERTY: header-args :tangle btitle_gen.py :session *title_gen* :exports both 
+
+   
+:options:  
+# below gets rid of the red boxes drawn around the links
+# `hyperref' package is already included in org-latex-default-packages-alist
+#+LaTeX_CLASS: article
+#+LATEX_HEADER: \usepackage{csquotes}
+#+LaTeX_HEADER: \hypersetup{
+#+LaTeX_HEADER:     colorlinks,%
+#+LaTeX_HEADER:     citecolor=black,%
+#+LaTeX_HEADER:     filecolor=black,%
+#+LaTeX_HEADER:     linkcolor=blue,%
+#+LaTeX_HEADER:     urlcolor=blue
+#+LaTeX_HEADER: }
+#+LaTeX: \setcounter{secnumdepth}{0}
+#+LATEX: \newpage
+:END:
+
+* Overview
+
+This program generates random anarchist book titles, drawing from from the actual titles of anarchist writings included on http:\\anarchistlibrary.org. The program uses Beautiful Soup to extract a list of titles from the website, creates bigrams (tuples of each word paired with the word following it) using every word in every title, computes a conditional frequency distribution over these word pairs using nltk, and randomly generates titles from the resulting conditional frequency distribution. The goal is to create an online 'random book title generator' both using the process outlined above, as well as extending this process by computing a conditional frequency distribution of the part of speech (pos) of each words and sampling words that match each part of speech according to probability. 
+* Program Steps  
+
+** Import Required Packages
+
+#+BEGIN_SRC python :result nil
+
+  import requests
+  from bs4 import BeautifulSoup as bs
+  import nltk
+  from nltk.tokenize import TweetTokenizer
+  import pandas as pd
+  from collections import Counter
+  import random
+  random.seed(666) # make random generates same results every time
+
+#+END_SRC
+
+#+RESULTS:
+
+** Download Titles 
+
+The first step is to download the titles in HTML format from the anarchistlibrary.org website using 'requests'. Then we can use Beautiful Soup (bs) to extract the title text from the HTML markup. 
+
+# TODO troubleshoot printing 
+# TODO git shared org mode agenda for lfct 
+
+#+BEGIN_SRC python :result tsoup[0]
+
+
+  url = "https://theanarchistlibrary.org/library"
+  r  = requests.get(url)
+  soup = bs(r.text, "lxml")
+  #soup = bs(open('atitles.html').read(), 'lxml')
+  tsoup = soup.findAll('div', {"class" : "amw-listing-item"})
+
+  tsoup[0]
+#+END_SRC
+
+#+RESULTS:
+: <div class="amw-listing-item">
+: <a class="list-group-item" href="https://theanarchistlibrary.org/library/philip-richlin-10-rules-for-a-non-violent-society">
+: <strong>10 Rules for a Non Violent Society</strong> — Philip Richlin      
+:     </a>
+: </div>
+
+# TODO: Figure out how to wrap this printout in latex
+# TODO: Figure out how to make this a different color (package I'm blanking on) 
+
+In each div, a title is separated from the author name by an em-dash followed by a space ("— "). Beautiful Soup extracts the text, make it lower-case, then uses the 'split' command and take the [0] element. This gives us a single string that contains the title. Next, nltk splits each word of the title into its own string and appends the list of those strings to title[ ]. 
+
+nltk provides multiple different kinds of tokenizers. The one I've selected, TweetTokenizer, preserves contractions as whole words while also separating punctuation such as ":". (it also is called in a weird way, so I'm not sure) 
+#+BEGIN_SRC python :results pp
+  tknzr = TweetTokenizer()
+  atitles = []
+  for div in tsoup:
+      a = div.get_text(strip = True).lower().split("— ")[0]
+      atitles.append(tknzr.tokenize(a))
+
+  atitles[0:5]
+
+#+END_SRC
+
+#+RESULTS:
+: [['10', 'rules', 'for', 'a', 'non', 'violent', 'society'],
+:  ['the', '12', 'articles', 'of', 'the', 'socialist', 'federation'],
+:  ['12', 'lines', 'of', 'flight', 'for', 'just', 'degrowth'],
+:  ['150', ',', '375', ':', 'rebels', 'come', 'alive', '!'],
+:  ['150', 'years', 'of', 'libertarian']]
+
+There are src_python{len(atitles)} {{{results(=2921=)}}} titles in titles[ ]. 
+# god dammit, they added a title
+
+I used  pandas to get descriptive statistics on the length of these titles, to see if it would be worth it to take a subset of the list. Most of the titles (75%) have 7 or fewer words. 
+#+BEGIN_SRC python 
+df = pd.DataFrame([len(title) for title in atitles])
+df.describe().round()
+
+#+END_SRC
+
+#+RESULTS:
+:             0
+: count  2921.0
+: mean      6.0
+: std       4.0
+: min       1.0
+: 25%       3.0
+: 50%       5.0
+: 75%       8.0
+: max      26.0
+
+# Note: Can't figure out how to get pd to display zero decimals
+** Create Bigrams
+Inspired by [[http://www.analyticbridge.datasciencecentral.com/profiles/blogs/generating-text-using-a-markov-model][this website]] I created a function 'makePairs' that creates bigrams for each word in each title: 
+
+"...the phrase “Hi my name is Emma” becomes [(“Hi”, “my”), (“my, “name”), (“name”, “is”), (“is”, “Emma”)]. The makePairs function takes in an array (a string split by word) and outputs an array in the above format."
+
+The original code parses a flat list, but 'titles' is a nested list of lists. So I revised the code to only pair words together that occur in the same title. 
+
+#+BEGIN_SRC python :results pp
+
+def makePairs(titles):
+    pairs = []
+    for title in titles:
+        if len(title) > 1:
+            for i in range(len(title)):
+                if i < len(title)-1:
+                    temp = (title[i], title[i+1])
+                    pairs.append(temp)
+    return pairs
+
+pairs = makePairs(atitles)
+pairs[0:12]
+
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+[('10', 'rules'),
+ ('rules', 'for'),
+ ('for', 'a'),
+ ('a', 'non'),
+ ('non', 'violent'),
+ ('violent', 'society'),
+ ('the', '12'),
+ ('12', 'articles'),
+ ('articles', 'of'),
+ ('of', 'the'),
+ ('the', 'socialist'),
+ ('socialist', 'federation')]
+#+end_example
+
+Notice how  'society' is the end of the first title, and 'the' is the beginning of the second title, but ('society', 'the') is not a bigram. 
+
+** Compute Conditional Frequency Distributions 
+
+A conditional frequency distribution (CFD) is a nltk method that takes bigrams (i.e., tuples of words) and computes their conditional probability-- that is, given a word, what is the probability that another word will follow? 
+
+A CFD is a nested dictionary--a ConditionalFreqDist dictionary of FreqDist dictionaries--where CFD[word] returns a FreqDist of word-frequency pairs, and CFD[word][word2] returns the value of the nested dictionary, in this case, a count of the frequency of the value of <word2> in the frequency distribution of <word>.   
+
+#+BEGIN_SRC python 
+
+cfd = nltk.ConditionalFreqDist(pairs)
+
+cfd['anarchism'].items() #object has an obnoxious wrapper
+
+#+END_SRC
+
+#+RESULTS:
+: dict_items([('?', 13), ('or', 3), ('versus', 2), ('articulated', 1), ('vs', 2), ('after', 1), ('really', 1), ('of', 3), (':', 21), ('as', 3), ('"', 1), ('problem', 1), ('=', 1), ('and', 45), ('in', 17), ('to', 2), ('avoid', 1), ('/', 1), ('&', 1), (',', 12), ('”', 3)])
+
+
+# todo: figure out how to remove these stupid quotes 
+In cfd, the word 'versus' follows the word 'anarchism' twice, and a colon follows the word 'anarchism' 21 times! (for the curious, we can examine those titles with the following code):
+
+#+BEGIN_SRC python :results output pp
+  for title in atitles: 
+      for i in range(len(title) - 1): #check each title word using an index
+          if title[i] == 'anarchism' and title[i+1] == ':': 
+              " ".join(title)
+
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+
+... ... ... 'accursed anarchism : five post-anarchist meditations on bataille'
+'african anarchism : the history of a movement'
+'anarchism : arguments for and against'
+'anarchism : communist or individualist ? both'
+'anarchism : from theory to practice'
+'anarchism : ideology or methodology ?'
+'anarchism : its philosophy and ideal'
+'anarchism : past and present'
+'anarchism : the feminist connection'
+'anarchism : the new identity politics'
+'anarchism : the solution to the world ’ s problems'
+'anarchism : what it is and what it is not'
+'cuban anarchism : the history of a movement'
+'feminism and anarchism : towards a politics of engagement'
+'the firebrand and the forging of a new anarchism : anarchist communism and free love'
+'green anarchism : towards the abolition of hierarchy'
+"individualist anarchism : an opponent of the ' propaganda of the deed '"
+'polyamory and queer anarchism : infinite possibilities for resistance'
+'social anarchism or lifestyle anarchism : an unbridgeable chasm'
+'socialism and anarchism : antagonistic opposites'
+'spiritual anarchism : topics for research'
+#+end_example
+
+** Generate Titles
+To generate text from 'cfd', the 'generate' function' starts with a seed word (default = "the") and finds the frequency distribution of the seed word (cfd["the"]). It then creates a blank array 'arr' and populates the array with each word in the "the" frequency distribution N times, where N = the frequency of the word. 
+
+I updated the function to prevent it from randomly selecting a word that does not have a frequency distribution (i.e., it follows a word but never has a word following it, thus throwing an index error when trying to sample from 'arr'). This happens when a word is randomly selected that follows other words but never precedes them. Since these are most likely the ends of sentences, this has the added advantage of usually providing the end of a sentence. 
+
+So if 'generate' was run with 'anarchism' as a seed word, chances are good it will be followed by ':'. 
+ 
+#+BEGIN_SRC python
+  def generate(cfd, word = 'the', num = 10):
+      title = []
+      for i in range(num):
+          arr = []
+          for j in cfd[word]:
+              for k in range(cfd[word][j]):
+                  arr.append(j)
+          title.append(word)        
+          word = arr[int((len(arr))*random.random())] # choose the word randomly from the conditional distribution
+          if len(cfd[word]) == 0:
+              title.append(word) # serendiptiously useful; most likely usually the end of a sentence
+              break
+      return(title)
+
+  atitle = generate(cfd, "anarchism") 
+  " ".join(atitle)
+#+END_SRC
+
+#+RESULTS:
+: anarchism ? feminist class hatred ? : paths to “
+
+# I hope I can find a way to start saving these like : 'anarchism and dirty money : a plea'
+
+* The Titles
+#+BEGIN_SRC python :results pp
+  random.seed(666)
+  def gen_titles(cfd, word, num = 10): 
+      title_collection = []
+      for i in range(num): 
+          title = generate(cfd, word)
+          title_collection.append(" ".join(title))    
+      return title_collection
+
+  gen_titles(cfd, "anarchism")
+
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+['anarchism and principally , and compost the roots of change',
+ 'anarchism and collective autonomy and sovietism',
+ 'anarchism or reform ? a hundred little hitlers',
+ 'anarchism and ecology action and the catholic worker and christianity',
+ 'anarchism in quebec ’ s charter',
+ 'anarchism and number 1 %',
+ 'anarchism and self-determination in russia : a menace to meese',
+ 'anarchism ? both theory of patriarchy , and anarchism and',
+ 'anarchism and feminism : devastate to work really means attack',
+ 'anarchism and diy politics of spain : ecological ethics of']
+#+end_example
+
+There are some issues with spacing and punctuation, and with wording, but also some really decent titles
+
+* Title Endings 
+
+As can be seen above, one problem with this approach is that the titles sometimes end with words a title would never end with, such as 'of'. This occurs when 'of' is the 10th word in a sentence. 
+
+In other words, some words should terminate titles, and some (e.g., 'the') should not, and some should have a probability of ending titles. 
+
+In addition to other more subtle ideas, the main strategy to the preliminary approach is to compute a ratio of how frequently a given word ends a title and how frequently it occurs overall. The assumption is that words that end titles 100% of the time should always terminate titles, whereas those that end titles 0% of the time should never terminate titles, and the in-between cases should probabilistically terminate titles. 
+
+(for now we are ignoring words that could be the end of titles but never do in a particular corpus). 
+
+For now I call this 'viability'-- there must be a better word but viability is the extent to which a word could or should be at the end of a title, currently defined as endword frequency / overall frequency 
+
+** find all endwords 
+
+we can find all of the 'end words' by simply taking the last word in every title from the title list: 
+#+BEGIN_SRC python :results pp
+  endwords = [title[-1] for title in atitles]
+
+  endwords[1:10]
+#+END_SRC
+
+
+#+RESULTS:
+: ['federation',
+:  'degrowth',
+:  '!',
+:  'libertarian',
+:  'theses',
+:  'revolutions',
+:  'surrealism',
+:  'transition',
+:  'capitalism']
+
+# TODO Idea: words that occur before punctuation are also good candidates for word termination
+** create frequency distributions of words
+computing flat frequency distributions will enable us to compute (1) the overall frequency of a word in a corpus, (2) the overall frequency of endwords, (3) the ratio of frequency a word at the end of a sentence vs. its overall frequency: 
+#+BEGIN_SRC python :results output 
+
+  # to find the overall FreqDist, the list must be flat 
+  ftitles = [word for title in atitles for word in title]
+
+  tfd = nltk.FreqDist(ftitles) #title freq dist 
+
+  efd = nltk.FreqDist(endwords) # endword freq dist; list is already flat
+#+END_SRC
+
+#+RESULTS:
+
+** compute ratio of frequency of word ending a title vs. overall word frequency (viability)
+
+#+BEGIN_SRC python :results output 
+  #we can find words that occur in the end AND in the middle of titles by using: 
+
+  def get_viability(word): # TODO: change name of this; make variables relative 
+      return round(efd[word] / tfd[word], 2) #why isn't this rounding?  
+
+  get_viability('anarchism')
+  get_viability('of')
+  get_viability('politics') 
+  #+END_SRC
+
+#+RESULTS:
+: 
+: >>> ... ... >>> 0.41
+: 0.0
+: 0.2
+ 
+# todo: use sprintf() to format these as percents 
+
+# TODO: termination should also be sensitive to how far along in the title you are. So 
+# if the word 'politics' has a viability of 50%, the probability of terminating 
+# should be smaller if it's the second word, but larger if it's the 10th word. 
+# 
+
+# * NOTES: thoughts on viability 
+ 
+#    - I want to walk back from the end of the title after 10 words, and i think in some cases it makes sense to revise words rather tahn just dropping them. However, I don't want to rely too heavily on this, because that will make the endings too similar if it has to retrace probability trees over and over until it finds an appropriate path. I think raw frequency might be a way to resolve how to terminate a sentence ONLY AFTER the sentence has traversed the path and not found a viable title
+
+#    - it might be good to, rather than randomly terminate depending on word, walk back for really long titles until a terminal character is found.
+
+#    - You don't want to rely on frequency, because rare words might not be appropriate terminations, common words might be, and etc.
+
+#    - if a word ever terminates a sentence, it should be a candidate
+
+#    - create a tag for end_title. if the word is frequent, then it should have a low probabiltiy of terminating, but that can be related to how frequently it
+
+#    - Another thing I haven't considered: selecting differnet words as a function of how probable they will terminate 
+     
