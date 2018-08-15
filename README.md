@@ -15,7 +15,7 @@ This program takes a seed word as an argument and then uses a Markov chain to pr
 
 ## Read Titles
 
-The first step is to parse the text file of titles into a JavaScript array.
+The first step is to parse the text file of titles into a JavaScript array on the backend.
 
 ```javascript
 const fs = require('fs')

@@ -1,8 +1,8 @@
 import React, { Component } from 'react'
 import logo from './logo.svg'
 import './App.css'
-import CFD from './server/parser/CFD'
-import TPD from './server/parser/TPD'
+import CFD from './parser/CFD'
+import TPD from './parser/TPD'
 import {
     randInt,
     titleCase,
