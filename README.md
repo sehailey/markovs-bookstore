@@ -1,19 +1,18 @@
-Markov's Bookstore
-By Sarah Hailey
+# Markov's Bookstore
 
-# Intro
+## Intro
 
 This program generates random book titles, drawing from over 8000 real book titles from BookReads, retrieved from a dataset at http://kaggle.com. The program extracts the titles from a csv file, creates bigrams (pairs of each word and the word following it) using every word in every title, computes a conditional frequency distribution over these word pairs, and randomly generates titles from the resulting conditional frequency distribution.
 
-## Markov Chains
+### Markov Chains
 
 A Markov chain is a specific kind of Markov model. Specifically, it is 'a stochastic model describing a sequence of possible events in which the probability of each event depends only on the state attained in the previous event.' It sounds complicated but it isn't: given a dataset with variables that are related to each other (for example, a set of sentences, with words that follow each other), we can calculate how frequently every word is followed by some other word. Then, if we wanted to guess the next word in a sentence, we can assume that it is more likely to be a word that frequently follows it in the overall dataset and less likely to be a word that infrequently follows it.
 
 This program takes a seed word as an argument and then uses a Markov chain to probabilistically predict each word that follows based on it's _conditional probability_-- that is, how frequently it follows the previous word in the entire dataset.
 
-# Steps
+## Steps
 
-## Read Titles
+### Read Titles
 
 The first step is to parse the text file of titles into a JavaScript array on the backend.
 
@@ -23,7 +22,7 @@ const txt = fs.readFileSync('./book_titles.txt', 'utf-8')
 const titles = txt.split('\n')
 ```
 
-## Tokenize Words
+### Tokenize Words
 
 'Tokenizing' refers to splitting each individual word into its own string. It has many challenges (What to do with punctuation? Should 'pair' and 'pairs' and 'pairings' be considered the same word? what about homonyms that are different parts of speech?) But for now we'll keep it very simple and just split each title into an array of words separated by white space.
 
@@ -33,7 +32,7 @@ const tokenized_titles = titles.map(title => {
 })
 ```
 
-## Create Bigrams
+### Create Bigrams
 
 Inspired by [this tutorial](http://www.analyticbridge.datasciencecentral.com/profiles/blogs/generating-text-using-a-markov-model), the function 'makePairs' creates bigrams from the dataset. A 'bigram' is just a pair of words that occur next to each other in a dataset. The makePairs function takes in an array of words in a title and outputs an array of bigrams. For example, the array:
 
