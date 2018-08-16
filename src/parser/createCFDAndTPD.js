@@ -2,15 +2,11 @@ const fs = require('fs')
 
 const txt = fs.readFileSync('./book_titles.txt', 'utf-8')
 const titles = txt.split('\n')
-
 const tokenized_titles = titles.map(title => {
     return title.split(' ')
 })
 
-fs.writeFileSync('tokenized_titles.txt', 'utf-8')
-
 const pairs = []
-
 //only create bigram if title has more than one word
 tokenized_titles.map(title => {
     if (title.length > 1) {
@@ -33,16 +29,6 @@ pairs.map(bigram => {
             [word2]: 1
         }
 })
-
-const randInt = int => {
-    return Math.floor(Math.random() * int)
-}
-
-const titleCase = titleArray => {
-    return titleArray.map(word => {
-        return word.charAt(0).toUpperCase() + word.slice(1)
-    })
-}
 
 // Find frequency distribution for each word
 const FD = {}
@@ -70,26 +56,5 @@ Object.keys(FD).forEach(key => {
     if (!TPD[key]) TPD[key] = 0
 })
 
-const generateTitleWithTPD = (seedWord = 'the', num = 10) => {
-    const title = [seedWord]
-    let word = seedWord
-    for (let n = 0; n <= num; n++) {
-        let wordCFD = CFD[word]
-        if (!wordCFD) break
-        let probability_spread = []
-        Object.keys(wordCFD).forEach(key => {
-            for (let m = 0; m < wordCFD[key]; m++) {
-                probability_spread.push(key)
-            }
-        })
-        word = probability_spread[randInt(probability_spread.length)]
-        title.push(word)
-        if ((n === 10 && TPD[word] < 0.5) || !TPD[word]) n = 9
-    }
-    console.log(titleCase(title).join(' '))
-
-    return titleCase(title).join(' ')
-}
-generateTitleWithTPD()
 fs.writeFileSync('./CFD.json', JSON.stringify(CFD), 'utf-8')
 fs.writeFileSync('./TPD.json', JSON.stringify(TPD), 'utf-8')
