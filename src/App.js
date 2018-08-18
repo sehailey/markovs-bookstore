@@ -1,6 +1,8 @@
 import React, { Component } from 'react'
 import logo from './logo.svg'
 import './App.css'
+import Navbar from './components/Navbar'
+
 import CFD from './parser/CFD'
 import TPD from './parser/TPD'
 import {
@@ -10,7 +12,7 @@ import {
 } from './generateTitleWithTPD'
 
 const initialState = {
-    title: ''
+    title: 'Hello, World! And Other Exciting Titles'
 }
 
 class App extends Component {
@@ -38,20 +40,36 @@ class App extends Component {
     render() {
         return (
             <div className="App container-fluid">
-                <header className="App-header">
-                    <img src={logo} className="App-logo" alt="logo" />
-                    <h1 className="App-title">Random Book Title Generator</h1>
-                </header>
-                <form onSubmit={this.handleSubmit}>
-                    <input
-                        onChange={this.handleChange}
-                        className="form-control mt-5"
-                        name="seedWord"
-                        result="title"
-                        placeholder="enter a seed word"
-                        aria-label="seedWord"
-                    />
-                </form>
+                <Navbar />
+                <div className="container">
+                    <div
+                        className="card main-card mx-auto text-center"
+                        style={{ width: 50 + 'em' }}
+                    >
+                        <div className="card-body">
+                            <h3> {this.state.title}</h3>
+                        </div>
+                    </div>
+                    <form onSubmit={this.handleSubmit}>
+                        <div className="row">
+                            <div className="col-8">
+                                <input
+                                    onChange={this.handleChange}
+                                    className="form-control"
+                                    name="seedWord"
+                                    result="title"
+                                    placeholder="enter a seed word"
+                                    aria-label="seedWord"
+                                />
+                            </div>
+                            <div className="col">
+                                <button className="form-control btn btn-primary">
+                                    Generate title
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
         )
     }

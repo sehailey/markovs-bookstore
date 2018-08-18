@@ -1,0 +1,36 @@
+/*!
+ * Start Bootstrap - Full (https://startbootstrap.com/template-overviews/full)
+ * Copyright 2013-2017 Start Bootstrap
+ * Licensed under MIT (https://github.com/BlackrockDigital/startbootstrap-full/blob/master/LICENSE)
+ */
+
+body {
+    background: url('../books.jpg') no-repeat center center fixed;
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    background-size: cover;
+    -o-background-size: cover;
+}
+
+.navbar-brown {
+    background-color: '290e07';
+    padding-bottom: 80px;
+}
+
+.burnt-orange {
+    background-color: #4caf50;
+}
+
+.btn-primary,
+.btn-primary:hover,
+.btn-primary:active,
+.btn-primary:visited {
+    background-color: #290e07 !important;
+    border-color: #290e07 !important;
+}
+
+.main-card {
+    /* width: 50rem;
+    height: 10rem; */
+    margin-bottom: 3rem;
+}
