@@ -18,7 +18,7 @@ export const generateTitleWithTPD = (seedWord = 'the', num = 10) => {
         if (!wordCFD) break
         let probability_spread = []
         Object.keys(wordCFD).forEach(key => {
-            for (let m = 0; m < wordCFD[key]; m++) {
+            for (let m = 0; m <= wordCFD[key]; m++) {
                 probability_spread.push(key)
             }
         })
