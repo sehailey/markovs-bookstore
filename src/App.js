@@ -1,5 +1,4 @@
 import React, { Component } from 'react'
-import logo from './logo.svg'
 import './App.css'
 import Navbar from './components/Navbar'
 
@@ -63,7 +62,10 @@ class App extends Component {
                                 />
                             </div>
                             <div className="col">
-                                <button className="form-control btn btn-primary">
+                                <button
+                                    type="button"
+                                    className="form-control btn btn-primary"
+                                >
                                     Generate title
                                 </button>
                             </div>

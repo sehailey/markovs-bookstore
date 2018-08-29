@@ -16,13 +16,13 @@ export const generateTitleWithTPD = (seedWord = 'the', num = 10) => {
     for (let n = 0; n <= num; n++) {
         let wordCFD = CFD[word]
         if (!wordCFD) break
-        let probability_spread = []
+        let probabilitySpread = []
         Object.keys(wordCFD).forEach(key => {
             for (let m = 0; m <= wordCFD[key]; m++) {
-                probability_spread.push(key)
+                probabilitySpread.push(key)
             }
         })
-        word = probability_spread[randInt(probability_spread.length)]
+        word = probabilitySpread[randInt(probabilitySpread.length)]
         title.push(word)
         if ((n === 10 && TPD[word] < 0.5) || !TPD[word]) n = 9
     }
