@@ -1,12 +1,12 @@
 import React from 'react'
-import { NavLink } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
-const Navbar = ({ username, handleClick, isLoggedIn }) => (
+const Navbar = () => (
     <nav className="navbar navbar-expand-lg sticky-top navbar-brown navbar-fixed-top">
         <div className="container">
-            <NavLink className="navbar-brand js-scroll-trigger" to="/">
+            <Link className="navbar-brand js-scroll-trigger" to="/">
                 Markov's Bookstore
-            </NavLink>
+            </Link>
             <button
                 className="navbar-toggler"
                 type="button"
@@ -19,9 +19,9 @@ const Navbar = ({ username, handleClick, isLoggedIn }) => (
                 <span className="navbar-toggler-icon" />
             </button>
             <div className="collapse navbar-collapse" id="navbarNav">
-                <NavLink className="nav-link" to="/about">
+                <Link className="nav-link" to="/about">
                     About
-                </NavLink>
+                </Link>
             </div>
         </div>
     </nav>
