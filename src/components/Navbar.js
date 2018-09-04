@@ -25,6 +25,12 @@ const Navbar = () => (
         >
           About
         </a>
+        <a
+          className="nav-link"
+          href="https://github.com/sehailey/markovs-bookstore"
+        >
+          Github
+        </a>
       </div>
     </div>
   </nav>
