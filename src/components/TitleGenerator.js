@@ -18,14 +18,11 @@ class TitleGenerator extends Component {
     evt.preventDefault()
     const word = this.state.seedWord
     const title = generateTitleWithTPD(word)
-    //console.log(title)
     this.setState({title: title})
-    //console.log('state: ', this.state)
   }
 
   handleChange = evt => {
     this.setState({[evt.target.name]: evt.target.value})
-    //console.log(this.state)
   }
 
   render() {
