@@ -39,13 +39,18 @@ const tokenized_titles = titles.map(title => {
 Inspired by [this tutorial](http://www.analyticbridge.datasciencecentral.com/profiles/blogs/generating-text-using-a-markov-model), the function 'makePairs' creates bigrams from the dataset. A 'bigram' is just a pair of words that occur next to each other in a dataset. The makePairs function takes in an array of words in a title and outputs an array of bigrams. For example, the array:
 
 ```javascript
-;['The', 'Cat', 'In', 'The', 'Hat']
+const exampleArray = ['The', 'Cat', 'In', 'The', 'Hat']
 ```
 
 becomes
 
 ```javascript
-;[['the', 'cat'], ['cat', 'in'], ['in', 'the'], ['the', 'hat']]
+const exampleBigrams = [
+  ['the', 'cat'],
+  ['cat', 'in'],
+  ['in', 'the'],
+  ['the', 'hat'],
+]
 ```
 
 To compute the bigrams, we loop through each title and push each bigram into a new array 'pairs'.
@@ -88,7 +93,7 @@ The function _generateTitle_ will take this CFD as an argument, as well as a see
 The function will append the seed word (e.g., 'the') to an empty array _title_. Next, it will create a temporary array _probability_spread_ and push every word from CFD['the'] into _probability_spread_ the number of times it follows 'the'. In the example above, this would be:
 
 ```javascript
-;['cat', 'hat']
+const exampleProbabilitySpread = ['cat', 'hat']
 ```
 
 The resulting _probability_spread_ array will contain each word that follows 'the' in the entire dataset the number of times it follows 'the'.
