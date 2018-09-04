@@ -2,7 +2,7 @@ import React, {Component} from 'react'
 import {Route} from 'react-router-dom'
 import './App.css'
 
-import {Navbar, TitleGenerator, About} from './components'
+import {Navbar, TitleGenerator} from './components'
 
 class App extends Component {
   render() {
@@ -10,7 +10,6 @@ class App extends Component {
       <div>
         <Navbar />
         <Route exact path="/" component={TitleGenerator} />
-        <Route exact path="/about" component={About} />
       </div>
     )
   }

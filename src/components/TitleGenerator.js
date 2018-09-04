@@ -38,8 +38,8 @@ class TitleGenerator extends Component {
             </div>
           </div>
           <form onSubmit={this.handleSubmit}>
-            <div className="row">
-              <div className="col-8">
+            <div className="row justify-content-md-center">
+              <div className="col-5">
                 <input
                   onChange={this.handleChange}
                   className="form-control"
@@ -49,7 +49,7 @@ class TitleGenerator extends Component {
                   aria-label="seedWord"
                 />
               </div>
-              <div className="col">
+              <div className="col-3">
                 <button type="button" className="form-control btn btn-primary">
                   Generate title
                 </button>
