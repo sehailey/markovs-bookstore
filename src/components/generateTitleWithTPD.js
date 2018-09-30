@@ -12,7 +12,7 @@ export const titleCase = titleArray => {
 }
 export const generateTitleWithTPD = (seedWord = 'the', num = 10) => {
   const title = [seedWord]
-  let word = seedWord
+  let word = seedWord.toLowerCase()
   for (let n = 0; n <= num; n++) {
     let wordCFD = CFD[word]
     if (!wordCFD) break
